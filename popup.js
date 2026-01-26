@@ -1,3 +1,12 @@
+async function shouldLog() {
+  try {
+    const result = await chrome.storage.local.get(['debugMode']);
+    return result.debugMode === true;
+  } catch (error) {
+    return false;
+  }
+}
+
 const elements = {
   filename: document.getElementById('filename'),
   timestamp: document.getElementById('timestamp'),
@@ -31,7 +40,9 @@ const elements = {
   debugActivity: document.getElementById('debug-activity'),
   debugError: document.getElementById('debug-error'),
   debugErrorItem: document.getElementById('debug-error-item'),
-  testConnection: document.getElementById('test-connection')
+  testConnection: document.getElementById('test-connection'),
+  debugModeToggle: document.getElementById('debug-mode-toggle'),
+  debugModeStatus: document.getElementById('debug-mode-status')
 };
 
 function showMessage(text, type = 'info') {
@@ -339,11 +350,44 @@ elements.testConnection.addEventListener('click', () => {
   });
 });
 
+if (elements.debugModeToggle) {
+  elements.debugModeToggle.addEventListener('click', async () => {
+    const result = await chrome.storage.local.get(['debugMode']);
+    const currentDebugMode = result.debugMode === true;
+    const newDebugMode = !currentDebugMode;
+
+    await chrome.storage.local.set({ debugMode: newDebugMode });
+    await updateDebugModeUI();
+
+    const message = newDebugMode
+      ? 'Debug logging enabled. Check console for detailed logs.'
+      : 'Debug logging disabled. Only essential logs will be shown.';
+
+    showMessage(message, 'success');
+
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        if (tab.url && tab.url.includes('drive.google.com')) {
+          chrome.tabs.sendMessage(tab.id, {
+            action: 'debugModeChanged',
+            debugMode: newDebugMode
+          }).catch(() => {});
+        }
+      });
+    });
+  });
+}
+
 async function verifyInstallation() {
-  console.log('[Popup] Verifying installation...');
+  const debugMode = await shouldLog();
+  if (debugMode) {
+    console.log('[Popup] Verifying installation...');
+  }
 
   const permissions = await chrome.permissions.getAll();
-  console.log('[Popup] Granted permissions:', permissions);
+  if (debugMode) {
+    console.log('[Popup] Granted permissions:', permissions);
+  }
 
   if (!permissions.permissions.includes('webRequest')) {
     console.error('[Popup] ❌ webRequest permission missing!');
@@ -367,22 +411,44 @@ async function verifyInstallation() {
     return false;
   }
 
-  console.log('[Popup] ✅ All required permissions granted');
+  if (debugMode) {
+    console.log('[Popup] ✅ All required permissions granted');
+  }
   return true;
 }
 
+async function updateDebugModeUI() {
+  const result = await chrome.storage.local.get(['debugMode']);
+  const debugMode = result.debugMode === true;
+
+  if (elements.debugModeStatus) {
+    elements.debugModeStatus.textContent = debugMode ? 'ON' : 'OFF';
+    elements.debugModeStatus.className = debugMode ? 'debug-mode-on' : 'debug-mode-off';
+  }
+
+  if (elements.debugModeToggle) {
+    elements.debugModeToggle.textContent = debugMode ? 'Disable Debug Logging' : 'Enable Debug Logging';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('[Popup] Extension popup opened');
+  const debugMode = await shouldLog();
+  if (debugMode) {
+    console.log('[Popup] Extension popup opened');
+  }
 
   await verifyInstallation();
 
   refreshStatus();
   updateDebugInfo();
+  await updateDebugModeUI();
 
-  console.log('[Popup] Check the browser console (F12) for detailed logs from background.js');
-  console.log('[Popup] To see background logs:');
-  console.log('[Popup] 1. Open chrome://extensions/');
-  console.log('[Popup] 2. Enable "Developer mode"');
-  console.log('[Popup] 3. Click "service worker" or "background page" link');
-  console.log('[Popup] 4. Play a video on Google Drive to see stream capture logs');
+  if (debugMode) {
+    console.log('[Popup] Check the browser console (F12) for detailed logs from background.js');
+    console.log('[Popup] To see background logs:');
+    console.log('[Popup] 1. Open chrome://extensions/');
+    console.log('[Popup] 2. Enable "Developer mode"');
+    console.log('[Popup] 3. Click "service worker" or "background page" link');
+    console.log('[Popup] 4. Play a video on Google Drive to see stream capture logs');
+  }
 });

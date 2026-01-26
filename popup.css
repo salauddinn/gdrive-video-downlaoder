@@ -360,3 +360,23 @@ main {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.debug-mode-on {
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  background: #2e7d32;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.debug-mode-off {
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  background: #757575;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
