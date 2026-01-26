@@ -336,8 +336,10 @@ function checkForVideo() {
 
 function checkVideoPlayerState() {
   try {
-    const toolbar = document.querySelector('[role="toolbar"]');
-    const isPlayerOpen = toolbar !== null;
+    const viewer = document.querySelector('div[role="dialog"][aria-label="Showing viewer."]');
+    const videoPlayer = document.querySelector('section[aria-label="Video Player"]');
+
+    const isPlayerOpen = viewer && videoPlayer && viewer.getAttribute('aria-hidden') !== "true";
 
     if (isPlayerOpen !== videoPlayerOpen) {
       videoPlayerOpen = isPlayerOpen;
@@ -346,6 +348,9 @@ function checkVideoPlayerState() {
         shouldLog().then(debugMode => {
           if (debugMode) {
             console.log('[GDrive Content] 📹 Video player opened');
+            console.log('[GDrive Content] Viewer dialog found:', !!viewer);
+            console.log('[GDrive Content] Video player section found:', !!videoPlayer);
+            console.log('[GDrive Content] Viewer aria-hidden:', viewer?.getAttribute('aria-hidden'));
           }
         });
 
