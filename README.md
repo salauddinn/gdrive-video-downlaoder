@@ -14,6 +14,34 @@ This Chrome extension intercepts video and audio streams from Google Drive and a
 - Simple one-click download interface
 - Preserves original filenames from Google Drive
 
+## Security & Privacy Notice
+
+**IMPORTANT: This extension currently requires `<all_urls>` permission**, which allows it to monitor network requests across all websites you visit. Here's what you need to know:
+
+**Why this permission is needed:**
+- Google Drive serves video streams from multiple dynamic domains that cannot be predicted in advance
+- The exact domain patterns vary and are not publicly documented
+- Without broad permissions, the extension cannot reliably capture video streams
+
+**What the extension actually does:**
+- Only processes URLs containing `videoplayback` (Google video streams)
+- Ignores all other network traffic
+- Does not collect, store, or transmit any personal data
+- Runs entirely in your browser with no external servers
+
+**Privacy guarantee:**
+- All code is open-source and auditable
+- No analytics or tracking
+- No data leaves your computer
+- Only video stream URLs are temporarily stored locally
+
+**Future plans:**
+- We are working to identify the specific Google domains used for video streaming
+- Once identified, permissions will be restricted to only those domains
+- This improvement is planned for a future version
+
+If you have concerns about this permission, you can review all the source code in this repository to verify what the extension does.
+
 ## Installation
 
 1. Download or clone this repository
@@ -88,11 +116,12 @@ This extension uses a **network-based detection strategy** for maximum reliabili
    - Pings the service worker to ensure it's active
 
 2. **Background Service Worker**:
-   - Monitors ALL network requests to `*.googlevideo.com/*`
-   - Intercepts requests containing `videoplayback` in the URL
+   - Monitors network requests across all URLs (see Known Issues section)
+   - Filters and intercepts only requests containing `videoplayback` in the URL
    - Captures URLs with `mime=video` or `mime=audio` parameters
    - Automatically cleans URLs by removing `&range=` parameters
    - Persists captured streams in Chrome storage
+   - Note: Despite broad monitoring, only Google video streams are processed
 
 3. **Network Monitoring**:
    - Real-time monitoring of all Google video requests
@@ -159,15 +188,65 @@ The extension now includes extensive console logging:
 - Check the console logs to see what's happening
 - Open Debug Info to see request counts
 
+## Known Issues
+
+### Broad Permission Scope (`<all_urls>`)
+
+**Current Status:**
+The extension currently requires `<all_urls>` host permission, which allows it to monitor network requests across all websites.
+
+**Why this is necessary:**
+- Google Drive serves video content from multiple dynamic domains
+- These domains are not predictable and vary based on:
+  - Geographic location
+  - Content delivery network (CDN) routing
+  - Load balancing across Google's infrastructure
+  - Individual file characteristics
+- Attempts to use specific domain patterns like `*.googlevideo.com` have proven unreliable
+
+**What this means for you:**
+- The extension technically has permission to see all network traffic
+- However, the code only processes URLs containing the string `videoplayback`
+- All other requests are immediately ignored
+- You can verify this by reviewing the open-source code in `background.js`
+
+**Performance impact:**
+- Minimal: The extension performs a simple string check on each URL
+- No data processing occurs for non-Google-video requests
+- Network requests are not blocked or delayed
+
+**Privacy assurance:**
+- The extension does not log, store, or transmit any data except video stream URLs
+- No personal information is collected
+- No external servers are contacted
+- All functionality runs locally in your browser
+
+**Future improvements:**
+- We are actively monitoring to identify the specific domain patterns used by Google Drive
+- Once patterns are confirmed, permissions will be restricted to only those domains
+- This is a high priority for future versions
+- If you can help identify consistent domain patterns, please contribute to the project
+
+**Workaround:**
+If you're uncomfortable with the broad permission:
+- Only enable the extension when downloading from Google Drive
+- Disable it immediately after downloading
+- Chrome allows you to enable/disable extensions with a single click
+
 ## Permissions Explained
 
 This extension requires the following permissions:
 
-- **webRequest**: To intercept and capture stream URLs
+- **webRequest**: To intercept and capture stream URLs from the network
 - **downloads**: To save video and audio files to your computer
 - **storage**: To remember captured streams between sessions
 - **notifications**: To alert you when streams are detected
-- **host_permissions**: To access Google Drive and video stream domains
+- **host_permissions (`<all_urls>`)**:
+  - **WARNING:** This is a broad permission that allows monitoring all network requests
+  - Required because Google Drive uses unpredictable dynamic domains for video streaming
+  - The extension filters requests and only processes those containing `videoplayback`
+  - All other traffic is ignored - see the Known Issues section above for full details
+  - This will be optimized to specific domains in future versions once patterns are identified
 
 ## Privacy & Security
 
@@ -209,4 +288,22 @@ See LICENSE file for details.
 
 - This tool is for personal use with your own Google Drive files
 - Respect copyright and terms of service
-- Stream URLs are temporary and will expire 
+- Stream URLs are temporary and will expire
+
+## Future Improvements
+
+**Version Roadmap:**
+
+**Planned for v2.0:**
+- Restrict `<all_urls>` permission to specific Google domains only
+- Reduce permission scope once domain patterns are identified
+- Improve performance by targeting specific domains
+
+**Help Wanted:**
+- If you can identify consistent domain patterns for Google Drive video streams, please open an issue or pull request
+- We're collecting data to determine the exact domains used across different regions and scenarios
+
+**Contributing:**
+- This is an open-source project and contributions are welcome
+- Review the code, suggest improvements, or help identify domain patterns
+- All contributions help make this extension more secure and privacy-friendly 
