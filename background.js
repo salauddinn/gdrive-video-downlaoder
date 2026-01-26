@@ -36,7 +36,7 @@ function cleanURL(url) {
   return url;
 }
 
-// Helper to get data safely from storage
+// Helper to get data safely from storage (prevents data loss when SW sleeps)
 const getStoredStreams = () => {
   return new Promise((resolve) => {
     chrome.storage.local.get(['capturedStreams'], (result) => {
@@ -59,25 +59,29 @@ const getStoredStreams = () => {
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
     const url = details.url;
- console.log('URL:', url,details);
+    // logDebug("URL details ${details}",url);
     // Filter: Must be a video playback URL
+    // We check for "videoplayback" string, which is common across all Google video servers
     if (!url.includes('videoplayback')) return;
 
+    // Detect Type
     const hasMimeVideo = url.includes('mime=video');
     const hasMimeAudio = url.includes('mime=audio');
-    console.log('URL:', url);
-    console.log('hasMimeVideo:', hasMimeVideo);
-    console.log('hasMimeAudio:', hasMimeAudio);
-    if (hasMimeVideo || hasMimeAudio) {
-      // Log potential hits if debug is ON
-      logDebug('Potential stream detected:', url.substring(0, 100) + '...');
+    
+    // Fallback: If no mime type in URL, treat as video if it's a playback URL
+    const isGenericVideo = !hasMimeVideo && !hasMimeAudio;
+
+    if (hasMimeVideo || hasMimeAudio || isGenericVideo) {
+      
+      // Log detection attempt
+      logDebug('🔎 Network traffic detected:', url.substring(0, 100) + '...');
 
       getStoredStreams().then((currentData) => {
         const timestamp = Date.now();
         let updated = false;
 
         // --- CAPTURE VIDEO ---
-        if (hasMimeVideo && currentData.videoOriginal !== url) {
+        if ((hasMimeVideo || isGenericVideo) && currentData.videoOriginal !== url) {
           logDebug('🎥 NEW VIDEO STREAM FOUND!');
           currentData.videoOriginal = url;
           currentData.video = cleanURL(url);
@@ -106,7 +110,7 @@ chrome.webRequest.onBeforeRequest.addListener(
       });
     }
   },
-  { urls: ["<all_urls>"] } // Catches drive.google.com, googlevideo.com, etc.
+  { urls: ["<all_urls>"] } // "All URLs" permission ensures we catch drive.google.com links
 );
 
 // ============================================================================
@@ -208,13 +212,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // --- ACTION: Ping ---
   else if (request.action === 'ping') {
-    // Only log ping if you want extremely verbose output
-    // logDebug('Ping received');
     sendResponse({ success: true, serviceWorkerAlive: true });
   }
 
   return true;
 });
 
-// Always log initialization so you know the script loaded
 console.log('[GDrive SW] Service Worker Initialized');
