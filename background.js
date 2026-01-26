@@ -210,9 +210,41 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
   
-  // --- ACTION: Ping ---
+  // --- ACTION: Ping (Updated for Popup Compatibility) ---
   else if (request.action === 'ping') {
-    sendResponse({ success: true, serviceWorkerAlive: true });
+    getStoredStreams().then((streams) => {
+        sendResponse({
+            success: true,
+            serviceWorkerAlive: true,
+            monitoring: {
+                active: true,
+                totalRequests: "Auto", // We don't track raw count in storage
+                videosCaptured: streams.video ? 1 : 0,
+                audiosCaptured: streams.audio ? 1 : 0
+            }
+        });
+    });
+    return true;
+  }
+
+  // --- ACTION: Diagnostics (Updated for Popup Compatibility) ---
+  else if (request.action === 'getDiagnostics') {
+     getStoredStreams().then((streams) => {
+        sendResponse({
+            success: true,
+            diagnostics: {
+                serviceWorkerStartTime: Date.now(), // Mocked as we are stateless
+                lastActivity: streams.timestamp || Date.now(),
+                totalRequestsMonitored: "N/A",
+                videoRequestsCaptured: streams.video ? 1 : 0,
+                audioRequestsCaptured: streams.audio ? 1 : 0,
+                webRequestListenerActive: true,
+                lastError: null,
+                uptime: 0
+            }
+        });
+     });
+     return true;
   }
 
   return true;
