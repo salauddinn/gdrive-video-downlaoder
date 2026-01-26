@@ -1,3 +1,11 @@
+// ============================================================================
+// GOOGLE DRIVE DOWNLOADER - BACKGROUND SERVICE WORKER
+// ============================================================================
+
+// 1. UTILITIES
+// ============================================================================
+
+// Helper to check if user enabled debug logging in the popup
 async function shouldLog() {
   try {
     const result = await chrome.storage.local.get(['debugMode']);
@@ -7,397 +15,206 @@ async function shouldLog() {
   }
 }
 
-console.log('[GDrive Downloader] Service worker started at', new Date().toLocaleTimeString());
-
-let capturedStreams = {
-  video: null,
-  audio: null,
-  videoOriginal: null,
-  audioOriginal: null,
-  filename: 'gdrive-video',
-  timestamp: null
-};
-
-let diagnostics = {
-  serviceWorkerStartTime: Date.now(),
-  lastActivity: Date.now(),
-  totalRequestsMonitored: 0,
-  videoRequestsCaptured: 0,
-  audioRequestsCaptured: 0,
-  webRequestListenerActive: true,
-  lastError: null
-};
+// Wrapper for console.log that respects the debug setting
+async function logDebug(message, data = null) {
+  if (await shouldLog()) {
+    if (data) {
+      console.log(`[GDrive SW] ${message}`, data);
+    } else {
+      console.log(`[GDrive SW] ${message}`);
+    }
+  }
+}
 
 function cleanURL(url) {
   if (!url) return null;
-
+  // Remove range parameter to ensure we download the full file
   const rangeIndex = url.indexOf('&range=');
   if (rangeIndex !== -1) {
     return url.substring(0, rangeIndex);
   }
-
   return url;
 }
 
-shouldLog().then(debugMode => {
-  if (debugMode) {
-    console.log('[GDrive Downloader] Installing webRequest listener for *.googlevideo.com');
-  }
-});
+// Helper to get data safely from storage
+const getStoredStreams = () => {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['capturedStreams'], (result) => {
+      resolve(result.capturedStreams || {
+        video: null,
+        audio: null,
+        videoOriginal: null,
+        audioOriginal: null,
+        filename: 'gdrive-video',
+        timestamp: null
+      });
+    });
+  });
+};
+
+// ============================================================================
+// 2. NETWORK LISTENER (Captures Video/Audio URLs)
+// ============================================================================
 
 chrome.webRequest.onBeforeRequest.addListener(
   (details) => {
-    diagnostics.totalRequestsMonitored++;
-    diagnostics.lastActivity = Date.now();
-
     const url = details.url;
-    const isVideoplayback = url.includes('videoplayback');
-    const hasGooglevideo = url.includes('googlevideo.com');
+ console.log('URL:', url,details);
+    // Filter: Must be a video playback URL
+    if (!url.includes('videoplayback')) return;
+
     const hasMimeVideo = url.includes('mime=video');
     const hasMimeAudio = url.includes('mime=audio');
+    console.log('URL:', url);
+    console.log('hasMimeVideo:', hasMimeVideo);
+    console.log('hasMimeAudio:', hasMimeAudio);
+    if (hasMimeVideo || hasMimeAudio) {
+      // Log potential hits if debug is ON
+      logDebug('Potential stream detected:', url.substring(0, 100) + '...');
 
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.log('[GDrive Downloader] 🔍 Network request #' + diagnostics.totalRequestsMonitored + ':', {
-          method: details.method,
-          type: details.type,
-          initiator: details.initiator,
-          urlPreview: url.substring(0, 150) + '...',
-          checks: {
-            hasVideoplayback: isVideoplayback,
-            hasGooglevideo: hasGooglevideo,
-            hasMimeVideo: hasMimeVideo,
-            hasMimeAudio: hasMimeAudio
-          }
-        });
-      }
-    });
+      getStoredStreams().then((currentData) => {
+        const timestamp = Date.now();
+        let updated = false;
 
-    if (isVideoplayback && hasGooglevideo) {
-      if (hasMimeVideo) {
-        diagnostics.videoRequestsCaptured++;
-        capturedStreams.videoOriginal = url;
-        capturedStreams.video = cleanURL(url);
-        capturedStreams.timestamp = Date.now();
-        console.log('[GDrive Downloader] ✅ VIDEO STREAM CAPTURED! (#' + diagnostics.videoRequestsCaptured + ')');
-        shouldLog().then(debugMode => {
-          if (debugMode) {
-            console.log('[GDrive Downloader] Video URL (cleaned):', capturedStreams.video.substring(0, 100) + '...');
-            console.log('[GDrive Downloader] Full original URL:', url);
-            console.log('[GDrive Downloader] Total video streams captured:', diagnostics.videoRequestsCaptured);
-          }
-        });
+        // --- CAPTURE VIDEO ---
+        if (hasMimeVideo && currentData.videoOriginal !== url) {
+          logDebug('🎥 NEW VIDEO STREAM FOUND!');
+          currentData.videoOriginal = url;
+          currentData.video = cleanURL(url);
+          currentData.timestamp = timestamp;
+          updated = true;
+        } 
+        
+        // --- CAPTURE AUDIO ---
+        if (hasMimeAudio && currentData.audioOriginal !== url) {
+          logDebug('🎵 NEW AUDIO STREAM FOUND!');
+          currentData.audioOriginal = url;
+          currentData.audio = cleanURL(url);
+          currentData.timestamp = timestamp;
+          updated = true;
+        }
 
-        chrome.storage.local.set({ capturedStreams });
-
-        chrome.notifications.create({
-          type: 'basic',
-          iconUrl: 'icons/icon48.png',
-          title: 'Video Stream Detected',
-          message: 'Video stream URL captured and cleaned. Open extension to download.'
-        });
-      } else if (hasMimeAudio) {
-        diagnostics.audioRequestsCaptured++;
-        capturedStreams.audioOriginal = url;
-        capturedStreams.audio = cleanURL(url);
-        capturedStreams.timestamp = Date.now();
-        console.log('[GDrive Downloader] ✅ AUDIO STREAM CAPTURED! (#' + diagnostics.audioRequestsCaptured + ')');
-        shouldLog().then(debugMode => {
-          if (debugMode) {
-            console.log('[GDrive Downloader] Audio URL (cleaned):', capturedStreams.audio.substring(0, 100) + '...');
-            console.log('[GDrive Downloader] Full original URL:', url);
-            console.log('[GDrive Downloader] Total audio streams captured:', diagnostics.audioRequestsCaptured);
-          }
-        });
-
-        chrome.storage.local.set({ capturedStreams });
-
-        chrome.notifications.create({
-          type: 'basic',
-          iconUrl: 'icons/icon48.png',
-          title: 'Audio Stream Detected',
-          message: 'Audio stream URL captured and cleaned. Open extension to download.'
-        });
-      } else {
-        shouldLog().then(debugMode => {
-          if (debugMode) {
-            console.log('[GDrive Downloader] ⚠️ googlevideo.com + videoplayback detected but NO mime type match');
-            console.log('[GDrive Downloader] URL analysis:', {
-              hasMimeVideo: hasMimeVideo,
-              hasMimeAudio: hasMimeAudio,
-              hasMimeParameter: url.includes('mime='),
-              urlFragment: url.substring(0, 300) + '...'
-            });
-
-            const mimeMatch = url.match(/mime=([^&]+)/);
-            if (mimeMatch) {
-              console.log('[GDrive Downloader] Found mime type:', decodeURIComponent(mimeMatch[1]));
-            }
-          }
-        });
-      }
-    } else {
-      shouldLog().then(debugMode => {
-        if (debugMode && diagnostics.totalRequestsMonitored % 50 === 0) {
-          console.log('[GDrive Downloader] 📊 Monitoring status: ' + diagnostics.totalRequestsMonitored + ' requests checked, ' + diagnostics.videoRequestsCaptured + ' videos, ' + diagnostics.audioRequestsCaptured + ' audios');
+        // --- SAVE IF NEW DATA FOUND ---
+        if (updated) {
+          chrome.storage.local.set({ capturedStreams: currentData }, () => {
+             logDebug('✅ Data saved to storage.');
+             // Flash badge to indicate success
+             chrome.action.setBadgeText({ text: "ON" });
+             chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" });
+          });
         }
       });
     }
   },
-  { urls: ["https://*.googlevideo.com/*"] }
+  { urls: ["<all_urls>"] } // Catches drive.google.com, googlevideo.com, etc.
 );
 
-console.log('[GDrive Downloader] ✅ webRequest listener installed successfully');
-console.log('[GDrive Downloader] 📡 Monitoring all requests to: https://*.googlevideo.com/*');
-console.log('[GDrive Downloader] 🔍 Looking for URLs with: videoplayback + mime=video OR mime=audio');
-console.log('[GDrive Downloader] 💡 To test: Open a Google Drive video and PLAY it');
-
-chrome.permissions.getAll((permissions) => {
-  const hasWebRequest = permissions.permissions.includes('webRequest');
-  const hasGooglevideoPermission = permissions.origins.some(origin =>
-    origin.includes('googlevideo.com') || origin === '<all_urls>'
-  );
-
-  if (!hasWebRequest) {
-    console.error('[GDrive Downloader] ❌❌❌ CRITICAL: webRequest permission NOT GRANTED!');
-    diagnostics.lastError = 'webRequest permission missing';
-    diagnostics.webRequestListenerActive = false;
-  } else if (!hasGooglevideoPermission) {
-    console.error('[GDrive Downloader] ❌❌❌ CRITICAL: googlevideo.com host permission NOT GRANTED!');
-    diagnostics.lastError = 'googlevideo.com permission missing';
-    diagnostics.webRequestListenerActive = false;
-  } else {
-    console.log('[GDrive Downloader] ✅ All required permissions granted');
-    console.log('[GDrive Downloader] ✅ Permissions:', {
-      webRequest: hasWebRequest,
-      googlevideoHost: hasGooglevideoPermission,
-      allPermissions: permissions.permissions,
-      origins: permissions.origins
-    });
-  }
-});
+// ============================================================================
+// 3. MESSAGE LISTENER (Handles Popup Actions)
+// ============================================================================
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  shouldLog().then(debugMode => {
-    if (debugMode) {
-      console.log('[GDrive Downloader] Message received:', request.action);
-    }
-  });
 
-  if (request.action === 'ping') {
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.log('[GDrive Downloader] Ping received - service worker is alive!');
-        console.log('[GDrive Downloader] Monitoring status:', {
-          requestsMonitored: diagnostics.totalRequestsMonitored,
-          videosCaptured: diagnostics.videoRequestsCaptured,
-          audiosCaptured: diagnostics.audioRequestsCaptured,
-          listenerActive: diagnostics.webRequestListenerActive
+  // --- ACTION: Update Filename ---
+  if (request.action === 'updateFilename') {
+    logDebug('📝 Filename update request:', request.filename);
+    
+    getStoredStreams().then((currentData) => {
+      currentData.filename = request.filename;
+      chrome.storage.local.set({ capturedStreams: currentData }, () => {
+        sendResponse({ success: true });
+      });
+    });
+    return true; 
+  }
+
+  // --- ACTION: Get Streams (UI Refresh) ---
+  else if (request.action === 'getStreams') {
+    getStoredStreams().then((streams) => {
+      sendResponse({ streams: streams });
+    });
+    return true;
+  }
+
+  // --- ACTION: Download Video ---
+  else if (request.action === 'downloadVideo') {
+    logDebug('⬇️ Received request to download VIDEO');
+    getStoredStreams().then((streams) => {
+      if (streams && streams.video) {
+        const finalFilename = `${streams.filename}_video.mp4`;
+        
+        chrome.downloads.download({
+          url: streams.video,
+          filename: finalFilename,
+          saveAs: false
+        }, (id) => {
+           if (chrome.runtime.lastError) {
+             console.error('[GDrive SW] Download Error:', chrome.runtime.lastError);
+             sendResponse({ success: false, error: chrome.runtime.lastError.message });
+           } else {
+             logDebug('✅ Video download started. ID:', id);
+             sendResponse({ success: true, downloadId: id });
+           }
         });
+      } else {
+        logDebug('❌ Download failed: No video URL in storage');
+        sendResponse({ success: false, error: 'No video captured. Play the video first.' });
       }
     });
-    sendResponse({
-      success: true,
-      timestamp: Date.now(),
-      serviceWorkerAlive: true,
-      monitoring: {
-        active: diagnostics.webRequestListenerActive,
-        totalRequests: diagnostics.totalRequestsMonitored,
-        videosCaptured: diagnostics.videoRequestsCaptured,
-        audiosCaptured: diagnostics.audioRequestsCaptured
-      }
-    });
-  } else if (request.action === 'getDiagnostics') {
-    const uptime = Date.now() - diagnostics.serviceWorkerStartTime;
-    const timeSinceLastActivity = Date.now() - diagnostics.lastActivity;
-
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.log('[GDrive Downloader] Sending diagnostics:', {
-          uptime: Math.floor(uptime / 1000) + 's',
-          totalRequestsMonitored: diagnostics.totalRequestsMonitored,
-          videosCaptured: diagnostics.videoRequestsCaptured,
-          audiosCaptured: diagnostics.audioRequestsCaptured
+    return true;
+  } 
+  
+  // --- ACTION: Download Audio ---
+  else if (request.action === 'downloadAudio') {
+    logDebug('⬇️ Received request to download AUDIO');
+    getStoredStreams().then((streams) => {
+      if (streams && streams.audio) {
+        const finalFilename = `${streams.filename}_audio.mp4`;
+        
+        chrome.downloads.download({
+          url: streams.audio,
+          filename: finalFilename,
+          saveAs: false
+        }, (id) => {
+           if (chrome.runtime.lastError) {
+             console.error('[GDrive SW] Download Error:', chrome.runtime.lastError);
+             sendResponse({ success: false, error: chrome.runtime.lastError.message });
+           } else {
+             logDebug('✅ Audio download started. ID:', id);
+             sendResponse({ success: true, downloadId: id });
+           }
         });
+      } else {
+        logDebug('❌ Download failed: No audio URL in storage');
+        sendResponse({ success: false, error: 'No audio captured.' });
       }
     });
+    return true;
+  }
 
-    sendResponse({
-      success: true,
-      diagnostics: {
-        ...diagnostics,
-        uptime,
-        timeSinceLastActivity
-      }
-    });
-  } else if (request.action === 'updateFilename') {
-    capturedStreams.filename = request.filename;
-    chrome.storage.local.set({ capturedStreams });
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.log('[GDrive Downloader] Filename updated to:', request.filename);
-      }
-    });
-    sendResponse({ success: true });
-  } else if (request.action === 'getStreams') {
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.log('[GDrive Downloader] Sending streams:', {
-          hasVideo: !!capturedStreams.video,
-          hasAudio: !!capturedStreams.audio,
-          filename: capturedStreams.filename
-        });
-      }
-    });
-    sendResponse({ streams: capturedStreams });
-  } else if (request.action === 'downloadVideo') {
-    if (capturedStreams.video) {
-      const filename = `${capturedStreams.filename}_video.mp4`;
-      shouldLog().then(debugMode => {
-        if (debugMode) {
-          console.log('[GDrive Downloader] Initiating video download:', filename);
-        }
-      });
-
-      chrome.downloads.download({
-        url: capturedStreams.video,
-        filename: filename,
-        saveAs: false
-      }, (downloadId) => {
-        if (chrome.runtime.lastError) {
-          const error = chrome.runtime.lastError.message;
-          console.error('[GDrive Downloader] ❌ Video download failed:', error);
-          diagnostics.lastError = `Video download: ${error}`;
-          sendResponse({ success: false, error });
-        } else {
-          console.log('[GDrive Downloader] ✅ Video download started, ID:', downloadId);
-          sendResponse({ success: true, downloadId: downloadId });
-          chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icons/icon48.png',
-            title: 'Video Download Started',
-            message: `Downloading ${filename}`
-          });
-        }
-      });
-      return true;
-    } else {
-      console.warn('[GDrive Downloader] ⚠️ Download attempted but no video stream captured');
-      sendResponse({ success: false, error: 'No video stream captured' });
-    }
-  } else if (request.action === 'downloadAudio') {
-    if (capturedStreams.audio) {
-      const filename = `${capturedStreams.filename}_audio.mp4`;
-      shouldLog().then(debugMode => {
-        if (debugMode) {
-          console.log('[GDrive Downloader] Initiating audio download:', filename);
-        }
-      });
-
-      chrome.downloads.download({
-        url: capturedStreams.audio,
-        filename: filename,
-        saveAs: false
-      }, (downloadId) => {
-        if (chrome.runtime.lastError) {
-          const error = chrome.runtime.lastError.message;
-          console.error('[GDrive Downloader] ❌ Audio download failed:', error);
-          diagnostics.lastError = `Audio download: ${error}`;
-          sendResponse({ success: false, error });
-        } else {
-          console.log('[GDrive Downloader] ✅ Audio download started, ID:', downloadId);
-          sendResponse({ success: true, downloadId: downloadId });
-          chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icons/icon48.png',
-            title: 'Audio Download Started',
-            message: `Downloading ${filename}`
-          });
-        }
-      });
-      return true;
-    } else {
-      console.warn('[GDrive Downloader] ⚠️ Download attempted but no audio stream captured');
-      sendResponse({ success: false, error: 'No audio stream captured' });
-    }
-  } else if (request.action === 'clearStreams') {
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.log('[GDrive Downloader] Clearing all streams');
-      }
-    });
-    capturedStreams = {
-      video: null,
-      audio: null,
-      videoOriginal: null,
-      audioOriginal: null,
-      filename: 'gdrive-video',
-      timestamp: null
+  // --- ACTION: Clear Data ---
+  else if (request.action === 'clearStreams') {
+    logDebug('🧹 Clearing streams...');
+    chrome.action.setBadgeText({ text: "" });
+    const empty = {
+        video: null, audio: null, videoOriginal: null, audioOriginal: null, 
+        filename: 'gdrive-video', timestamp: null
     };
-    chrome.storage.local.set({ capturedStreams });
-    sendResponse({ success: true });
-  } else if (request.action === 'openVideoTab') {
-    if (capturedStreams.video) {
-      shouldLog().then(debugMode => {
-        if (debugMode) {
-          console.log('[GDrive Downloader] Opening video in new tab');
-        }
-      });
-      chrome.tabs.create({ url: capturedStreams.video }, () => {
-        sendResponse({ success: true });
-      });
-      return true;
-    } else {
-      console.warn('[GDrive Downloader] ⚠️ No video stream to open');
-      sendResponse({ success: false, error: 'No video stream captured' });
-    }
-  } else if (request.action === 'openAudioTab') {
-    if (capturedStreams.audio) {
-      shouldLog().then(debugMode => {
-        if (debugMode) {
-          console.log('[GDrive Downloader] Opening audio in new tab');
-        }
-      });
-      chrome.tabs.create({ url: capturedStreams.audio }, () => {
-        sendResponse({ success: true });
-      });
-      return true;
-    } else {
-      console.warn('[GDrive Downloader] ⚠️ No audio stream to open');
-      sendResponse({ success: false, error: 'No audio stream captured' });
-    }
+    chrome.storage.local.set({ capturedStreams: empty }, () => {
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+  
+  // --- ACTION: Ping ---
+  else if (request.action === 'ping') {
+    // Only log ping if you want extremely verbose output
+    // logDebug('Ping received');
+    sendResponse({ success: true, serviceWorkerAlive: true });
   }
 
   return true;
 });
 
-chrome.storage.local.get(['capturedStreams'], (result) => {
-  if (result.capturedStreams) {
-    capturedStreams = result.capturedStreams;
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.log('[GDrive Downloader] Restored streams from storage:', {
-          hasVideo: !!capturedStreams.video,
-          hasAudio: !!capturedStreams.audio,
-          filename: capturedStreams.filename
-        });
-      }
-    });
-  } else {
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.log('[GDrive Downloader] No streams found in storage');
-      }
-    });
-  }
-});
-
-setInterval(() => {
-  shouldLog().then(debugMode => {
-    if (debugMode) {
-      console.log('[GDrive Downloader] Service worker keep-alive ping');
-    }
-  });
-}, 20000);
-
-console.log('[GDrive Downloader] 🚀 Extension fully initialized and ready!');
+// Always log initialization so you know the script loaded
+console.log('[GDrive SW] Service Worker Initialized');
