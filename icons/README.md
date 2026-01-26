@@ -6,9 +6,18 @@ This folder should contain three PNG icon files for the Chrome extension:
 - **icon48.png** - 48x48 pixels (for the extension management page)
 - **icon128.png** - 128x128 pixels (for the Chrome Web Store)
 
-## How to Create Icons
+## Quick Method: Use the Icon Generator
 
-You can create these icons in several ways:
+**EASIEST OPTION:**
+
+1. Open `generate-icons.html` in your browser
+2. Click "Download All Icons"
+3. Move the downloaded PNG files to this icons folder
+4. Done!
+
+## Alternative Methods
+
+You can also create these icons in other ways:
 
 ### Option 1: Online Icon Generators
 
