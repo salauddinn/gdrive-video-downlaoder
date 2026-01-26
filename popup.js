@@ -5,9 +5,22 @@ const elements = {
   audioIcon: document.getElementById('audio-icon'),
   downloadVideo: document.getElementById('download-video'),
   downloadAudio: document.getElementById('download-audio'),
+  copyVideo: document.getElementById('copy-video'),
+  copyAudio: document.getElementById('copy-audio'),
+  openVideo: document.getElementById('open-video'),
+  openAudio: document.getElementById('open-audio'),
   refresh: document.getElementById('refresh'),
   clear: document.getElementById('clear'),
-  message: document.getElementById('message')
+  message: document.getElementById('message'),
+  urlPreviewSection: document.getElementById('url-preview-section'),
+  toggleUrls: document.getElementById('toggle-urls'),
+  urlPreviewContent: document.getElementById('url-preview-content'),
+  videoUrlItem: document.getElementById('video-url-item'),
+  audioUrlItem: document.getElementById('audio-url-item'),
+  videoUrlText: document.getElementById('video-url-text'),
+  audioUrlText: document.getElementById('audio-url-text'),
+  videoUrlStatus: document.getElementById('video-url-status'),
+  audioUrlStatus: document.getElementById('audio-url-status')
 };
 
 function showMessage(text, type = 'info') {
@@ -45,6 +58,8 @@ function updateUI(streams) {
     streams = {
       video: null,
       audio: null,
+      videoOriginal: null,
+      audioOriginal: null,
       filename: 'gdrive-video',
       timestamp: null
     };
@@ -56,17 +71,66 @@ function updateUI(streams) {
   if (streams.video) {
     elements.videoIcon.textContent = '🟢';
     elements.downloadVideo.disabled = false;
+    elements.copyVideo.disabled = false;
+    elements.openVideo.disabled = false;
   } else {
     elements.videoIcon.textContent = '⚪';
     elements.downloadVideo.disabled = true;
+    elements.copyVideo.disabled = true;
+    elements.openVideo.disabled = true;
   }
 
   if (streams.audio) {
     elements.audioIcon.textContent = '🟢';
     elements.downloadAudio.disabled = false;
+    elements.copyAudio.disabled = false;
+    elements.openAudio.disabled = false;
   } else {
     elements.audioIcon.textContent = '⚪';
     elements.downloadAudio.disabled = true;
+    elements.copyAudio.disabled = true;
+    elements.openAudio.disabled = true;
+  }
+
+  if (streams.video || streams.audio) {
+    elements.urlPreviewSection.style.display = 'block';
+    updateURLPreview(streams);
+  } else {
+    elements.urlPreviewSection.style.display = 'none';
+  }
+}
+
+function updateURLPreview(streams) {
+  if (streams.video) {
+    elements.videoUrlItem.style.display = 'block';
+    const preview = streams.video.substring(0, 100) + '...';
+    elements.videoUrlText.textContent = preview;
+
+    if (streams.videoOriginal && streams.videoOriginal !== streams.video) {
+      elements.videoUrlStatus.textContent = '✓ Cleaned (removed &range=)';
+      elements.videoUrlStatus.className = 'url-status-cleaned';
+    } else {
+      elements.videoUrlStatus.textContent = 'Original URL';
+      elements.videoUrlStatus.className = 'url-status-original';
+    }
+  } else {
+    elements.videoUrlItem.style.display = 'none';
+  }
+
+  if (streams.audio) {
+    elements.audioUrlItem.style.display = 'block';
+    const preview = streams.audio.substring(0, 100) + '...';
+    elements.audioUrlText.textContent = preview;
+
+    if (streams.audioOriginal && streams.audioOriginal !== streams.audio) {
+      elements.audioUrlStatus.textContent = '✓ Cleaned (removed &range=)';
+      elements.audioUrlStatus.className = 'url-status-cleaned';
+    } else {
+      elements.audioUrlStatus.textContent = 'Original URL';
+      elements.audioUrlStatus.className = 'url-status-original';
+    }
+  } else {
+    elements.audioUrlItem.style.display = 'none';
   }
 }
 
@@ -130,6 +194,60 @@ elements.clear.addEventListener('click', () => {
       showMessage('Streams cleared', 'info');
     }
   });
+});
+
+elements.copyVideo.addEventListener('click', () => {
+  chrome.runtime.sendMessage({ action: 'getStreams' }, (response) => {
+    if (response && response.streams && response.streams.video) {
+      navigator.clipboard.writeText(response.streams.video).then(() => {
+        showMessage('Video URL copied to clipboard!', 'success');
+      }).catch(() => {
+        showMessage('Failed to copy URL', 'error');
+      });
+    }
+  });
+});
+
+elements.copyAudio.addEventListener('click', () => {
+  chrome.runtime.sendMessage({ action: 'getStreams' }, (response) => {
+    if (response && response.streams && response.streams.audio) {
+      navigator.clipboard.writeText(response.streams.audio).then(() => {
+        showMessage('Audio URL copied to clipboard!', 'success');
+      }).catch(() => {
+        showMessage('Failed to copy URL', 'error');
+      });
+    }
+  });
+});
+
+elements.openVideo.addEventListener('click', () => {
+  chrome.runtime.sendMessage({ action: 'openVideoTab' }, (response) => {
+    if (response && response.success) {
+      showMessage('Video opened in new tab', 'success');
+    } else {
+      showMessage(`Error: ${response.error}`, 'error');
+    }
+  });
+});
+
+elements.openAudio.addEventListener('click', () => {
+  chrome.runtime.sendMessage({ action: 'openAudioTab' }, (response) => {
+    if (response && response.success) {
+      showMessage('Audio opened in new tab', 'success');
+    } else {
+      showMessage(`Error: ${response.error}`, 'error');
+    }
+  });
+});
+
+elements.toggleUrls.addEventListener('click', () => {
+  if (elements.urlPreviewContent.style.display === 'none') {
+    elements.urlPreviewContent.style.display = 'block';
+    elements.toggleUrls.textContent = 'Hide Details';
+  } else {
+    elements.urlPreviewContent.style.display = 'none';
+    elements.toggleUrls.textContent = 'Show Details';
+  }
 });
 
 document.addEventListener('DOMContentLoaded', () => {

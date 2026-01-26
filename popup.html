@@ -30,9 +30,17 @@
             <span class="status-icon" id="video-icon">⚪</span>
             Video Stream
           </div>
-          <button id="download-video" class="btn btn-primary" disabled>
-            Download Video
-          </button>
+          <div class="btn-group">
+            <button id="download-video" class="btn btn-primary" disabled>
+              Download
+            </button>
+            <button id="copy-video" class="btn btn-secondary-small" disabled title="Copy URL">
+              Copy
+            </button>
+            <button id="open-video" class="btn btn-secondary-small" disabled title="Open in Tab">
+              Open
+            </button>
+          </div>
         </div>
 
         <div class="status-item">
@@ -40,9 +48,36 @@
             <span class="status-icon" id="audio-icon">⚪</span>
             Audio Stream
           </div>
-          <button id="download-audio" class="btn btn-primary" disabled>
-            Download Audio
-          </button>
+          <div class="btn-group">
+            <button id="download-audio" class="btn btn-primary" disabled>
+              Download
+            </button>
+            <button id="copy-audio" class="btn btn-secondary-small" disabled title="Copy URL">
+              Copy
+            </button>
+            <button id="open-audio" class="btn btn-secondary-small" disabled title="Open in Tab">
+              Open
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="url-preview-section" id="url-preview-section" style="display: none;">
+        <div class="url-preview-header">
+          <h3>Captured URLs</h3>
+          <button id="toggle-urls" class="btn-toggle">Show Details</button>
+        </div>
+        <div class="url-preview-content" id="url-preview-content" style="display: none;">
+          <div class="url-item" id="video-url-item" style="display: none;">
+            <div class="url-label">Video URL:</div>
+            <div class="url-text" id="video-url-text"></div>
+            <div class="url-status" id="video-url-status"></div>
+          </div>
+          <div class="url-item" id="audio-url-item" style="display: none;">
+            <div class="url-label">Audio URL:</div>
+            <div class="url-text" id="audio-url-text"></div>
+            <div class="url-status" id="audio-url-status"></div>
+          </div>
         </div>
       </div>
 
@@ -62,9 +97,14 @@
         <ol>
           <li>Open a restricted video file on Google Drive</li>
           <li>Play the video to trigger stream detection</li>
-          <li>Open this extension and download both streams</li>
-          <li>Merge them using FFmpeg on your desktop</li>
+          <li>Use <strong>Download</strong> to save streams directly</li>
+          <li>Use <strong>Copy</strong> to copy the cleaned URL</li>
+          <li>Use <strong>Open</strong> to open in a new tab</li>
+          <li>Merge downloaded files using FFmpeg</li>
         </ol>
+        <p style="margin-top: 10px; font-size: 12px; color: #666;">
+          URLs are automatically cleaned (removes &range= parameter) for reliable downloads.
+        </p>
       </div>
     </main>
   </div>

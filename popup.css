@@ -75,6 +75,14 @@ main {
   background: #f9f9f9;
   border-radius: 8px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-group {
+  display: flex;
+  gap: 5px;
+  align-items: center;
 }
 
 .status-label {
@@ -135,6 +143,33 @@ main {
   background: #cc0000;
 }
 
+.btn-secondary-small {
+  background: #e0e0e0;
+  color: #333;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-secondary-small:hover:not(:disabled) {
+  background: #d0d0d0;
+}
+
+.btn-toggle {
+  background: transparent;
+  border: 1px solid #ccc;
+  color: #666;
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-toggle:hover {
+  background: #f5f5f5;
+  border-color: #999;
+}
+
 .actions-section {
   display: flex;
   gap: 10px;
@@ -191,4 +226,71 @@ main {
 .instructions li {
   margin-bottom: 5px;
   line-height: 1.5;
+}
+
+.url-preview-section {
+  background: #f0f8ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.url-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.url-preview-header h3 {
+  font-size: 14px;
+  color: #1976d2;
+  margin: 0;
+}
+
+.url-preview-content {
+  margin-top: 10px;
+}
+
+.url-item {
+  background: white;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  border-left: 3px solid #1976d2;
+}
+
+.url-item:last-child {
+  margin-bottom: 0;
+}
+
+.url-label {
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.url-text {
+  font-family: monospace;
+  font-size: 11px;
+  color: #333;
+  word-break: break-all;
+  background: #f9f9f9;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+}
+
+.url-status-cleaned {
+  font-size: 11px;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.url-status-original {
+  font-size: 11px;
+  color: #666;
+  font-style: italic;
 }
