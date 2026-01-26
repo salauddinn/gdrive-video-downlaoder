@@ -42,7 +42,9 @@ const elements = {
   debugErrorItem: document.getElementById('debug-error-item'),
   testConnection: document.getElementById('test-connection'),
   debugModeToggle: document.getElementById('debug-mode-toggle'),
-  debugModeStatus: document.getElementById('debug-mode-status')
+  debugModeStatus: document.getElementById('debug-mode-status'),
+  autoDetectionToggle: document.getElementById('auto-detection-toggle'),
+  manualDetect: document.getElementById('manual-detect')
 };
 
 function showMessage(text, type = 'info') {
@@ -431,6 +433,94 @@ async function updateDebugModeUI() {
   }
 }
 
+async function updateAutoDetectionUI() {
+  const result = await chrome.storage.local.get(['autoDetection']);
+  const autoDetection = result.autoDetection !== false;
+
+  if (elements.autoDetectionToggle) {
+    elements.autoDetectionToggle.textContent = autoDetection ? 'Auto: ON' : 'Auto: OFF';
+    elements.autoDetectionToggle.style.background = autoDetection ? '#4CAF50' : '#757575';
+    elements.autoDetectionToggle.style.color = 'white';
+  }
+}
+
+if (elements.autoDetectionToggle) {
+  elements.autoDetectionToggle.addEventListener('click', async () => {
+    const result = await chrome.storage.local.get(['autoDetection']);
+    const currentAutoDetection = result.autoDetection !== false;
+    const newAutoDetection = !currentAutoDetection;
+
+    await chrome.storage.local.set({ autoDetection: newAutoDetection });
+    await updateAutoDetectionUI();
+
+    const message = newAutoDetection
+      ? 'Automatic detection enabled'
+      : 'Automatic detection disabled - use "Detect Now" button';
+
+    showMessage(message, 'success');
+
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && tabs[0].url && tabs[0].url.includes('drive.google.com')) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: 'autoDetectionChanged',
+          autoDetection: newAutoDetection
+        }).catch(() => {});
+      }
+    });
+  });
+}
+
+if (elements.manualDetect) {
+  elements.manualDetect.addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && tabs[0].url && tabs[0].url.includes('drive.google.com')) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: 'manualDetect'
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            showMessage('Error: Make sure you are on a Google Drive page with a video', 'error');
+          } else if (response && response.success) {
+            showMessage('Manual detection triggered - check if video was found', 'success');
+            setTimeout(() => {
+              refreshStatus();
+            }, 1000);
+          } else {
+            showMessage('Detection triggered - wait a moment for results', 'info');
+            setTimeout(() => {
+              refreshStatus();
+            }, 1000);
+          }
+        });
+      } else {
+        showMessage('Please open a Google Drive video page first', 'error');
+      }
+    });
+  });
+}
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local' && changes.capturedStreams) {
+    shouldLog().then(debugMode => {
+      if (debugMode) {
+        console.log('[Popup] Streams updated in storage, refreshing UI');
+      }
+    });
+
+    const newStreams = changes.capturedStreams.newValue;
+    const oldStreams = changes.capturedStreams.oldValue;
+
+    if (newStreams && (newStreams.video || newStreams.audio)) {
+      if (!oldStreams || (!oldStreams.video && newStreams.video)) {
+        showMessage('Video stream detected and ready to download!', 'success');
+      } else if (!oldStreams || (!oldStreams.audio && newStreams.audio)) {
+        showMessage('Audio stream detected and ready to download!', 'success');
+      }
+    }
+
+    refreshStatus();
+  }
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
   const debugMode = await shouldLog();
   if (debugMode) {
@@ -442,6 +532,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   refreshStatus();
   updateDebugInfo();
   await updateDebugModeUI();
+  await updateAutoDetectionUI();
 
   if (debugMode) {
     console.log('[Popup] Check the browser console (F12) for detailed logs from background.js');

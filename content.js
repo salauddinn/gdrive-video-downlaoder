@@ -1,7 +1,6 @@
 // State tracking
 let videoPlayerOpen = false;
 let detectionEnabled = true;
-let manualButton = null;
 
 shouldLog().then(debugMode => {
   if (debugMode) {
@@ -302,15 +301,6 @@ function checkForVideo() {
         }
       }
 
-      try {
-        addDownloadIndicator();
-      } catch (e) {
-        shouldLog().then(debugMode => {
-          if (debugMode) {
-            console.error('[GDrive Content] ❌ Error adding indicator:', e);
-          }
-        });
-      }
 
       try {
         if (videoElement.tagName === 'VIDEO') {
@@ -343,220 +333,12 @@ function checkForVideo() {
   }
 }
 
-function addDownloadIndicator() {
-  try {
-    if (document.getElementById('gdrive-downloader-indicator')) {
-      shouldLog().then(debugMode => {
-        if (debugMode) {
-          console.log('[GDrive Content] Indicator already exists, skipping');
-        }
-      });
-      return;
-    }
-
-    if (!document.body) {
-      shouldLog().then(debugMode => {
-        if (debugMode) {
-          console.log('[GDrive Content] ⚠️ document.body not available yet');
-        }
-      });
-      return;
-    }
-
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.log('[GDrive Content] Adding download indicator to page');
-      }
-    });
-
-    const indicator = document.createElement('div');
-    indicator.id = 'gdrive-downloader-indicator';
-    indicator.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #4CAF50;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 5px;
-      font-family: Arial, sans-serif;
-      font-size: 14px;
-      z-index: 10000;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    `;
-    indicator.textContent = 'Stream detected - Open extension to download';
-
-    document.body.appendChild(indicator);
-
-    setTimeout(() => {
-      try {
-        indicator.style.transition = 'opacity 0.5s';
-        indicator.style.opacity = '0';
-        setTimeout(() => {
-          try {
-            if (indicator.parentNode) {
-              indicator.parentNode.removeChild(indicator);
-            }
-          } catch (e) {
-            // Indicator already removed
-          }
-        }, 500);
-      } catch (e) {
-        // Animation failed
-      }
-    }, 5000);
-  } catch (error) {
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.error('[GDrive Content] ❌ Error adding indicator:', error);
-      }
-    });
-  }
-}
-
-function addManualDetectionButton() {
-  try {
-    // Remove existing button if present
-    if (manualButton && manualButton.parentNode) {
-      try {
-        manualButton.parentNode.removeChild(manualButton);
-      } catch (e) {
-        // Button already removed
-      }
-    }
-
-    if (!document.body) {
-      shouldLog().then(debugMode => {
-        if (debugMode) {
-          console.log('[GDrive Content] ⚠️ Cannot add button: document.body not available');
-        }
-      });
-      return;
-    }
-
-    // Create button container
-    const buttonContainer = document.createElement('div');
-    buttonContainer.id = 'gdrive-manual-detection';
-    buttonContainer.style.cssText = `
-      position: fixed;
-      bottom: 80px;
-      right: 20px;
-      z-index: 10000;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    `;
-
-    // Manual detection button
-    const detectButton = document.createElement('button');
-    detectButton.textContent = '🔍 Detect Video';
-    detectButton.style.cssText = `
-      background: #1a73e8;
-      color: white;
-      border: none;
-      padding: 10px 16px;
-      border-radius: 4px;
-      font-family: 'Google Sans', Arial, sans-serif;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-      transition: background 0.2s, box-shadow 0.2s;
-    `;
-
-    detectButton.onmouseover = () => {
-      detectButton.style.background = '#1557b0';
-      detectButton.style.boxShadow = '0 2px 5px rgba(0,0,0,0.4)';
-    };
-
-    detectButton.onmouseout = () => {
-      detectButton.style.background = '#1a73e8';
-      detectButton.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
-    };
-
-    detectButton.onclick = () => {
-      try {
-        shouldLog().then(debugMode => {
-          if (debugMode) {
-            console.log('[GDrive Content] Manual detection triggered');
-          }
-        });
-        checkForVideo();
-
-        // Visual feedback
-        detectButton.textContent = '✅ Detected!';
-        setTimeout(() => {
-          detectButton.textContent = '🔍 Detect Video';
-        }, 1500);
-      } catch (e) {
-        shouldLog().then(debugMode => {
-          if (debugMode) {
-            console.error('[GDrive Content] ❌ Error in manual detection:', e);
-          }
-        });
-      }
-    };
-
-    // Auto-detection toggle button
-    const autoToggle = document.createElement('button');
-    autoToggle.textContent = detectionEnabled ? '🔄 Auto: ON' : '⏸️ Auto: OFF';
-    autoToggle.style.cssText = `
-      background: ${detectionEnabled ? '#34a853' : '#5f6368'};
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 4px;
-      font-family: 'Google Sans', Arial, sans-serif;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-      transition: background 0.2s;
-    `;
-
-    autoToggle.onclick = () => {
-      try {
-        detectionEnabled = !detectionEnabled;
-        chrome.storage.local.set({ autoDetection: detectionEnabled }, () => {
-          autoToggle.textContent = detectionEnabled ? '🔄 Auto: ON' : '⏸️ Auto: OFF';
-          autoToggle.style.background = detectionEnabled ? '#34a853' : '#5f6368';
-
-          shouldLog().then(debugMode => {
-            if (debugMode) {
-              console.log('[GDrive Content] Auto-detection:', detectionEnabled ? 'enabled' : 'disabled');
-            }
-          });
-        });
-      } catch (e) {
-        shouldLog().then(debugMode => {
-          if (debugMode) {
-            console.error('[GDrive Content] ❌ Error toggling auto-detection:', e);
-          }
-        });
-      }
-    };
-
-    buttonContainer.appendChild(detectButton);
-    buttonContainer.appendChild(autoToggle);
-    document.body.appendChild(buttonContainer);
-
-    manualButton = buttonContainer;
-  } catch (error) {
-    shouldLog().then(debugMode => {
-      if (debugMode) {
-        console.error('[GDrive Content] ❌ Error adding manual button:', error);
-      }
-    });
-  }
-}
 
 function checkVideoPlayerState() {
   try {
-    // Check if video player toolbar is present
     const toolbar = document.querySelector('[role="toolbar"]');
     const isPlayerOpen = toolbar !== null;
 
-    // Player state changed
     if (isPlayerOpen !== videoPlayerOpen) {
       videoPlayerOpen = isPlayerOpen;
 
@@ -567,18 +349,6 @@ function checkVideoPlayerState() {
           }
         });
 
-        // Add manual button when player opens
-        try {
-          addManualDetectionButton();
-        } catch (e) {
-          shouldLog().then(debugMode => {
-            if (debugMode) {
-              console.error('[GDrive Content] ❌ Error adding button:', e);
-            }
-          });
-        }
-
-        // Run detection if auto-detection is enabled
         if (detectionEnabled) {
           setTimeout(() => {
             try {
@@ -598,16 +368,6 @@ function checkVideoPlayerState() {
             console.log('[GDrive Content] ❌ Video player closed');
           }
         });
-
-        // Remove manual button when player closes
-        try {
-          if (manualButton && manualButton.parentNode) {
-            manualButton.parentNode.removeChild(manualButton);
-            manualButton = null;
-          }
-        } catch (e) {
-          // Button already removed
-        }
       }
     }
   } catch (error) {
@@ -707,5 +467,37 @@ shouldLog().then(debugMode => {
     console.log('[GDrive Content] ✅ Content script fully loaded and initialized!');
     console.log('[GDrive Content] Watching for video player open/close events...');
     console.log('[GDrive Content] IMPORTANT: You must PLAY the video for streams to be captured!');
+  }
+});
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'manualDetect') {
+    shouldLog().then(debugMode => {
+      if (debugMode) {
+        console.log('[GDrive Content] Manual detection triggered from popup');
+      }
+    });
+    try {
+      checkForVideo();
+      sendResponse({ success: true });
+    } catch (e) {
+      shouldLog().then(debugMode => {
+        if (debugMode) {
+          console.error('[GDrive Content] ❌ Error in manual detection:', e);
+        }
+      });
+      sendResponse({ success: false, error: e.message });
+    }
+    return true;
+  } else if (request.action === 'autoDetectionChanged') {
+    detectionEnabled = request.autoDetection;
+    chrome.storage.local.set({ autoDetection: detectionEnabled });
+    shouldLog().then(debugMode => {
+      if (debugMode) {
+        console.log('[GDrive Content] Auto-detection changed to:', detectionEnabled ? 'enabled' : 'disabled');
+      }
+    });
+    sendResponse({ success: true });
+    return true;
   }
 });

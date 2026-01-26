@@ -63,6 +63,26 @@ main {
   white-space: nowrap;
 }
 
+.detection-controls {
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.control-label {
+  font-weight: 600;
+  color: #2e7d32;
+  font-size: 13px;
+}
+
 .status-section {
   margin-bottom: 20px;
 }
