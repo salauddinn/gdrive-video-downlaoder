@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Drive Downloader</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Google Drive Downloader</h1>
+    </header>
+
+    <main>
+      <div class="info-section">
+        <div class="info-item">
+          <label>Filename:</label>
+          <span id="filename">-</span>
+        </div>
+        <div class="info-item">
+          <label>Last Detected:</label>
+          <span id="timestamp">-</span>
+        </div>
+      </div>
+
+      <div class="status-section">
+        <div class="status-item">
+          <div class="status-label">
+            <span class="status-icon" id="video-icon">⚪</span>
+            Video Stream
+          </div>
+          <button id="download-video" class="btn btn-primary" disabled>
+            Download Video
+          </button>
+        </div>
+
+        <div class="status-item">
+          <div class="status-label">
+            <span class="status-icon" id="audio-icon">⚪</span>
+            Audio Stream
+          </div>
+          <button id="download-audio" class="btn btn-primary" disabled>
+            Download Audio
+          </button>
+        </div>
+      </div>
+
+      <div class="actions-section">
+        <button id="refresh" class="btn btn-secondary">
+          Refresh Status
+        </button>
+        <button id="clear" class="btn btn-danger">
+          Clear Streams
+        </button>
+      </div>
+
+      <div class="message" id="message"></div>
+
+      <div class="instructions">
+        <h3>How to use:</h3>
+        <ol>
+          <li>Open a restricted video file on Google Drive</li>
+          <li>Play the video to trigger stream detection</li>
+          <li>Open this extension and download both streams</li>
+          <li>Merge them using FFmpeg on your desktop</li>
+        </ol>
+      </div>
+    </main>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
