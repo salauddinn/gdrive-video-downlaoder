@@ -90,6 +90,46 @@
         </button>
       </div>
 
+      <div class="debug-section">
+        <div class="debug-header">
+          <h3>Debug Info</h3>
+          <button id="toggle-debug" class="btn-toggle">Show Debug</button>
+        </div>
+        <div class="debug-content" id="debug-content" style="display: none;">
+          <div class="debug-item">
+            <span class="debug-label">Service Worker:</span>
+            <span id="debug-sw-status" class="debug-value">Checking...</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Uptime:</span>
+            <span id="debug-uptime" class="debug-value">-</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Total Requests:</span>
+            <span id="debug-requests" class="debug-value">0</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Videos Captured:</span>
+            <span id="debug-videos" class="debug-value">0</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Audios Captured:</span>
+            <span id="debug-audios" class="debug-value">0</span>
+          </div>
+          <div class="debug-item">
+            <span class="debug-label">Last Activity:</span>
+            <span id="debug-activity" class="debug-value">-</span>
+          </div>
+          <div class="debug-item" id="debug-error-item" style="display: none;">
+            <span class="debug-label">Last Error:</span>
+            <span id="debug-error" class="debug-value error-text">-</span>
+          </div>
+          <button id="test-connection" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">
+            Test Connection
+          </button>
+        </div>
+      </div>
+
       <div class="message" id="message"></div>
 
       <div class="instructions">

@@ -71,6 +71,12 @@ The extension popup shows:
 - **Audio Stream**: Status and download button for audio
 - **Refresh Status**: Manually refresh the stream status
 - **Clear Streams**: Clear cached stream URLs
+- **Debug Info**: Toggle to show detailed diagnostics
+  - Service worker status
+  - Network requests monitored
+  - Streams captured count
+  - Last activity timestamp
+  - Test connection button
 
 ## How It Works
 
@@ -81,23 +87,51 @@ The extension popup shows:
 
 ## Troubleshooting
 
-### Streams Not Detected
+### Quick Diagnostics
 
-- Make sure you played the video for at least 3-5 seconds
-- Try refreshing the Google Drive page
-- Check that the extension has proper permissions
+The extension now includes comprehensive diagnostic tools:
 
-### Download Fails
+1. **Open the extension popup**
+2. **Click "Show Debug"** to see:
+   - Service worker status (should be "Active")
+   - Total network requests monitored
+   - Number of streams captured
+   - Last activity timestamp
+3. **Click "Test Connection"** to verify the background service is responsive
 
-- The stream URLs expire after some time, try capturing fresh streams
+### Detailed Troubleshooting
+
+For comprehensive troubleshooting steps, see **[DIAGNOSTICS.md](DIAGNOSTICS.md)**.
+
+The extension now includes extensive console logging:
+- Open Chrome DevTools (F12) on the Google Drive page
+- Look for messages prefixed with `[GDrive Content]`, `[GDrive Downloader]`, or `[Popup]`
+- These logs will tell you exactly what the extension is doing
+
+### Common Issues
+
+**Streams Not Detected**
+- Make sure you **PLAY the video** (not just open the file)
+- Wait 3-5 seconds after playing
+- Check Debug Info - "Total Requests" should be increasing
+- See [DIAGNOSTICS.md](DIAGNOSTICS.md) for detailed steps
+
+**Download Fails**
+- Stream URLs expire after some time, capture fresh streams
 - Make sure Chrome has permission to download files
 - Check your Downloads folder for existing files with the same name
 
-### Extension Not Working
+**Extension Not Working**
+- Open Debug Info and check service worker status
+- Click "Test Connection" to verify communication
+- Check console logs for error messages
+- See [DIAGNOSTICS.md](DIAGNOSTICS.md) for complete diagnostic procedure
 
-- Make sure Developer mode is enabled in Chrome
-- Check the Chrome DevTools console for any error messages
-- Try reloading the extension from `chrome://extensions/`
+**Buttons Stay Disabled**
+- This means streams haven't been captured yet
+- Make sure you're **playing the video**, not just viewing the file
+- Check the console logs to see what's happening
+- Open Debug Info to see request counts
 
 ## Permissions Explained
 
