@@ -80,10 +80,36 @@ The extension popup shows:
 
 ## How It Works
 
-1. **Content Script**: Runs on Google Drive pages and extracts the file name
-2. **Background Service Worker**: Intercepts network requests to capture stream URLs
-3. **Popup Interface**: Displays status and provides download controls
-4. **Chrome Downloads API**: Handles the actual file downloads
+This extension uses a **network-based detection strategy** for maximum reliability:
+
+1. **Content Script**:
+   - Detects when the Google Drive video player opens
+   - Extracts the filename from the page
+   - Pings the service worker to ensure it's active
+
+2. **Background Service Worker**:
+   - Monitors ALL network requests to `*.googlevideo.com/*`
+   - Intercepts requests containing `videoplayback` in the URL
+   - Captures URLs with `mime=video` or `mime=audio` parameters
+   - Automatically cleans URLs by removing `&range=` parameters
+   - Persists captured streams in Chrome storage
+
+3. **Network Monitoring**:
+   - Real-time monitoring of all Google video requests
+   - Live statistics display in popup (updates every 2 seconds)
+   - Detailed request logging in debug mode
+   - Permission verification on startup
+
+4. **Popup Interface**:
+   - Displays captured stream status with visual indicators
+   - Shows live network monitoring statistics
+   - Provides download, copy, and open controls
+   - Comprehensive debug panel for troubleshooting
+
+5. **Chrome Downloads API**:
+   - Handles secure file downloads
+   - Saves files with descriptive names
+   - Provides download notifications
 
 ## Troubleshooting
 

@@ -10,6 +10,11 @@ async function shouldLog() {
 const elements = {
   filename: document.getElementById('filename'),
   timestamp: document.getElementById('timestamp'),
+  monitoringIcon: document.getElementById('monitoring-icon'),
+  monitoringText: document.getElementById('monitoring-text'),
+  monitoringRequests: document.getElementById('monitoring-requests'),
+  monitoringVideos: document.getElementById('monitoring-videos'),
+  monitoringAudios: document.getElementById('monitoring-audios'),
   videoIcon: document.getElementById('video-icon'),
   audioIcon: document.getElementById('audio-icon'),
   downloadVideo: document.getElementById('download-video'),
@@ -172,6 +177,32 @@ function formatUptime(ms) {
   }
 }
 
+function updateMonitoringStatus() {
+  chrome.runtime.sendMessage({ action: 'ping' }, (response) => {
+    if (response && response.success && response.monitoring) {
+      const mon = response.monitoring;
+
+      elements.monitoringRequests.textContent = mon.totalRequests;
+      elements.monitoringVideos.textContent = mon.videosCaptured;
+      elements.monitoringAudios.textContent = mon.audiosCaptured;
+
+      if (mon.active) {
+        elements.monitoringIcon.textContent = '🔍';
+        elements.monitoringText.textContent = 'Network Monitoring Active';
+      } else {
+        elements.monitoringIcon.textContent = '⚠️';
+        elements.monitoringText.textContent = 'Network Monitoring Inactive!';
+      }
+    } else {
+      elements.monitoringIcon.textContent = '❌';
+      elements.monitoringText.textContent = 'Service Worker Not Responding';
+      elements.monitoringRequests.textContent = '-';
+      elements.monitoringVideos.textContent = '-';
+      elements.monitoringAudios.textContent = '-';
+    }
+  });
+}
+
 function updateDebugInfo() {
   chrome.runtime.sendMessage({ action: 'ping' }, (response) => {
     if (response && response.success) {
@@ -210,6 +241,7 @@ function refreshStatus() {
     }
   });
 
+  updateMonitoringStatus();
   updateDebugInfo();
 }
 
@@ -530,9 +562,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   await verifyInstallation();
 
   refreshStatus();
+  updateMonitoringStatus();
   updateDebugInfo();
   await updateDebugModeUI();
   await updateAutoDetectionUI();
+
+  setInterval(() => {
+    updateMonitoringStatus();
+  }, 2000);
 
   if (debugMode) {
     console.log('[Popup] Check the browser console (F12) for detailed logs from background.js');

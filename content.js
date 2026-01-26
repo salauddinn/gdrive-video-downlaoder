@@ -199,135 +199,56 @@ async function shouldLog() {
   }
 }
 
-function checkForVideo() {
+function notifyVideoPlayerOpened() {
   try {
-    let detectionMethod = null;
-    let videoElement = null;
-
-    // Method 1: Look for aria-label="Video Player"
-    try {
-      const ariaLabelPlayer = document.querySelector('[aria-label="Video Player"]');
-      if (ariaLabelPlayer) {
-        detectionMethod = 'aria-label="Video Player"';
-        videoElement = ariaLabelPlayer.querySelector('video') || ariaLabelPlayer;
+    shouldLog().then(debugMode => {
+      if (debugMode) {
+        console.log('[GDrive Content] 📹 Notifying service worker that video player opened');
       }
-    } catch (e) {
-      // Continue to next method
-    }
+    });
 
-    // Method 2: Look for YouTube embed iframe
-    if (!detectionMethod) {
-      try {
-        const youtubeIframe = document.querySelector('iframe[src*="youtube.googleapis.com/embed"]');
-        if (youtubeIframe) {
-          detectionMethod = 'YouTube embed iframe';
-          videoElement = youtubeIframe;
-        }
-      } catch (e) {
-        // Continue to next method
-      }
-    }
-
-    // Method 3: Look for player container
-    if (!detectionMethod) {
-      try {
-        const playerContainer = document.querySelector('.fP5mL, [id^="ucc-"], .a-b-ma');
-        if (playerContainer) {
-          detectionMethod = 'player container div';
-          videoElement = playerContainer.querySelector('video') || playerContainer;
-        }
-      } catch (e) {
-        // Continue to next method
-      }
-    }
-
-    // Method 4: Direct video element search
-    if (!detectionMethod) {
-      try {
-        videoElement = document.querySelector('video');
-        if (videoElement) {
-          detectionMethod = 'video element';
-        }
-      } catch (e) {
-        // Continue
-      }
-    }
-
-    if (videoElement && detectionMethod) {
-      shouldLog().then(debugMode => {
-        if (debugMode) {
-          console.log('[GDrive Content] ✅ Video player detected via:', detectionMethod);
-          try {
-            if (videoElement.tagName === 'VIDEO') {
-              console.log('[GDrive Content] Video element:', {
-                src: videoElement.src,
-                currentSrc: videoElement.currentSrc,
-                readyState: videoElement.readyState,
-                networkState: videoElement.networkState,
-                paused: videoElement.paused
-              });
-            }
-          } catch (e) {
-            console.log('[GDrive Content] Could not read video element properties');
+    chrome.runtime.sendMessage({ action: 'ping' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('[GDrive Content] ❌ Service worker not responding:', chrome.runtime.lastError.message);
+      } else if (response && response.success) {
+        shouldLog().then(debugMode => {
+          if (debugMode) {
+            console.log('[GDrive Content] ✅ Service worker is alive and monitoring network requests');
+            console.log('[GDrive Content] 🎬 PLAY THE VIDEO now to capture video/audio streams');
           }
-        }
-      });
-
-      const filename = extractFilename();
-
-      // Validate filename before sending
-      if (filename && typeof filename === 'string' && filename.length > 0) {
-        try {
-          chrome.runtime.sendMessage({
-            action: 'updateFilename',
-            filename: filename
-          }, (response) => {
-            if (chrome.runtime.lastError) {
-              console.error('[GDrive Content] ❌ Failed to send filename:', chrome.runtime.lastError.message);
-            } else if (response && response.success) {
-              shouldLog().then(debugMode => {
-                if (debugMode) {
-                  console.log('[GDrive Content] ✅ Filename updated to:', filename);
-                }
-              });
-            }
-          });
-        } catch (e) {
-          shouldLog().then(debugMode => {
-            if (debugMode) {
-              console.error('[GDrive Content] ❌ Error sending message:', e);
-            }
-          });
-        }
+        });
       }
+    });
 
-
+    const filename = extractFilename();
+    if (filename && typeof filename === 'string' && filename.length > 0) {
       try {
-        if (videoElement.tagName === 'VIDEO') {
-          shouldLog().then(debugMode => {
-            if (debugMode) {
-              if (videoElement.paused) {
-                console.log('[GDrive Content] ⚠️ Video is paused. PLAY THE VIDEO to capture streams!');
-              } else {
-                console.log('[GDrive Content] Video is playing - streams should be captured soon');
+        chrome.runtime.sendMessage({
+          action: 'updateFilename',
+          filename: filename
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('[GDrive Content] ❌ Failed to send filename:', chrome.runtime.lastError.message);
+          } else if (response && response.success) {
+            shouldLog().then(debugMode => {
+              if (debugMode) {
+                console.log('[GDrive Content] ✅ Filename updated to:', filename);
               }
-            }
-          });
-        }
+            });
+          }
+        });
       } catch (e) {
-        // Ignore video state check errors
+        shouldLog().then(debugMode => {
+          if (debugMode) {
+            console.error('[GDrive Content] ❌ Error sending filename:', e);
+          }
+        });
       }
-    } else {
-      shouldLog().then(debugMode => {
-        if (debugMode) {
-          console.log('[GDrive Content] No video player found on page');
-        }
-      });
     }
   } catch (error) {
     shouldLog().then(debugMode => {
       if (debugMode) {
-        console.error('[GDrive Content] ❌ Error in checkForVideo:', error);
+        console.error('[GDrive Content] ❌ Error in notifyVideoPlayerOpened:', error);
       }
     });
   }
@@ -357,11 +278,11 @@ function checkVideoPlayerState() {
         if (detectionEnabled) {
           setTimeout(() => {
             try {
-              checkForVideo();
+              notifyVideoPlayerOpened();
             } catch (e) {
               shouldLog().then(debugMode => {
                 if (debugMode) {
-                  console.error('[GDrive Content] ❌ Error in auto-detection:', e);
+                  console.error('[GDrive Content] ❌ Error in notification:', e);
                 }
               });
             }
@@ -483,7 +404,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
     });
     try {
-      checkForVideo();
+      notifyVideoPlayerOpened();
       sendResponse({ success: true });
     } catch (e) {
       shouldLog().then(debugMode => {
