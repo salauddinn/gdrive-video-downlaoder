@@ -1,5 +1,8 @@
 # Google Drive Downloader Chrome Extension
 
+> [!WARNING]
+> **Legal Disclaimer:** This tool is provided strictly for educational purposes and personal use. Users are entirely responsible for ensuring they have the legal right to download any content and must comply with Google Drive's Terms of Service. The creator of this repository assumes no liability for how this tool is used, nor any consequences resulting from its use.
+
 Download audio and video streams separately from restricted Google Drive files.
 
 ## Overview
