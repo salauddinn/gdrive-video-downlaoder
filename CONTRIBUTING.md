@@ -11,7 +11,7 @@ If you've noticed a bug or have a feature request, make one! It's generally best
 1. Fork the repository on GitHub.
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/g-downloader.git
+   git clone https://github.com/salauddinn/g-downloader.git
    ```
 3. Open Google Chrome and navigate to `chrome://extensions/`.
 4. Enable **Developer mode** in the top right corner.
